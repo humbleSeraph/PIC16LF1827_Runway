@@ -10,19 +10,23 @@ author: Osagie Igbeare
 
 /**************** Header Files *********************/
 
-#include <bitdefs.h>
+#include "BitDefs.h"
 #include <htc.h>
+#include "pic.h"
+#include "chip_select.h"
 
 
 /***************** Configuration Macros ***************/
 
-__CONFIG(FOSC_XT & WDTE_OFF & MCLRE_ON & PWRTE_OFF & BOREN_OFF
+__CONFIG(FCMEN_OFF & IESO_OFF & FOSC_XT & WDTE_OFF & MCLRE_ON & PWRTE_OFF & BOREN_OFF
 		& LVP_ON & WRT_OFF & CPD_OFF & CP_OFF);
 
 
 /***************** # Defines *****************/
 
 /*************** module level variables ************/
+
+static char counter; 
 
 
 /******* Function Prototypes ***************/
@@ -52,32 +56,39 @@ void InitTimers()
 {
 
 	T2CON = 0b01111110;		// Fosc / (4 instruct * 16 prescale * 16 postscale * 60 PR2) = 65 Hz
-	PR2 = 60; 
+	PR2 = 250; 
 }
 
 void InitInterrupts()
 {
 
+	PIE1 = 0b00000010; 		// Enable TMR2IE, interrupt when Timer 2 matches PR2	
 	INTCON = 0b11000000;	// Enable GIE, Enable PEIE
-	PIE1 = 0b00000010; 		// Enable TMR2IE, interrupt when Timer 2 matches PR2
+	
 }
 
 void interrupt ISR()
 {
 
-	INTCON &= 0b00111111;   // Disable Interrupts
-
+	counter++; 
 	if (TMR2IF)
 	{
-
-		PORTA &= BIT2LO;	// turn LED on RA2 on by pulling pin low
-		PORTB &= BIT5LO; 	// turn LED on RB6 on
+		if ((counter % 2) != 0)
+		{
+			PORTA |= BIT2HI;
+			PORTB &= BIT5LO;
+			
+		}
+		else 
+		{
+			PORTA &= BIT2LO;
+			PORTB |= BIT5HI;
+			counter = 0; 
+		}
 
 		TMR2IF = 0;		// clears the TIMR2IF (timer 2 interrupt flag)
 
 	}
-
-	INTCON |= 0b11000000;	// ReEnable Interrupts
 	return; 
 
 }
@@ -93,6 +104,10 @@ void main ()
 	InitPorts();
 	InitTimers();
 	InitInterrupts();
+	while(1)
+	{
+
+	}
 
 
 
